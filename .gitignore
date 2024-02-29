@@ -1,0 +1,5 @@
+checkpoints/
+glove/
+output_gpt/
+output_vqvae/
+__pycache__/
