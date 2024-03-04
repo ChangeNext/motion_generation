@@ -95,31 +95,32 @@ class MoeCausalLMOutputWithPast:
     noisy_logits: Optional[Tuple[torch.FloatTensor]] = None
 
 class Expert(nn.Module):
-    def __init__(self, n_embd, fc_rate, drop_out_rate):
+    def __init__(self, embed_dim, fc_rate, drop_out_rate):
         super().__init__()
         
-        self.w1 = nn.Linear(n_embd, fc_rate*n_embd)
-        self.w2 = nn.Linear(fc_rate*n_embd, n_embd)
-        self.w3 = nn.Linear(n_embd, fc_rate*n_embd)
+        self.w1 = nn.Linear(embed_dim, fc_rate*embed_dim)
+        self.w2 = nn.Linear(fc_rate*embed_dim, embed_dim)
+        self.w3 = nn.Linear(embed_dim, fc_rate*embed_dim)
         self.act_fn = nn.ReLU()
-        self.dropout = nn.Dropout(drop_out_rate)
         
-        self.w1_1 = nn.Linear(n_embd, )
+        self.net = nn.Sequential(
+            nn.Linear(embed_dim, fc_rate* embed_dim),
+            nn.GELU(),
+            nn.Linear(fc_rate * embed_dim, embed_dim),
+            nn.Dropout(drop_out_rate),
+        )   
     def forward(self, hidden_states):
-        current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
-        current_hidden_states = self.w2(current_hidden_states)
+        # current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
         # current_hidden_states = self.dropout(self.w2(current_hidden_states))
-        return current_hidden_states
+        return self.net(hidden_states)
 
-
-    
 class NoisyTopkRouter(nn.Module):
-    def __init__(self, n_embed, num_experts, top_k):
+    def __init__(self, embed_dim, num_experts, top_k):
         super(NoisyTopkRouter, self).__init__()
-        self.embed_dim = n_embed
+        self.embed_dim = embed_dim
         self.top_k = top_k
-        self.topkroute_linear = nn.Linear(n_embed, num_experts)
-        self.noise_linear = nn.Linear(n_embed, num_experts)
+        self.topkroute_linear = nn.Linear(embed_dim, num_experts)
+        self.noise_linear = nn.Linear(embed_dim, num_experts)
         
     def forward(self, hidden_states):
         gate_logits = self.topkroute_linear(hidden_states)
@@ -407,7 +408,7 @@ class Text2Motion_Transformer_MoE(nn.Module):
         router_z_loss = torch.square(router_z_loss)            
         router_z_loss = router_z_loss.mean()
         
-        loss = self.router_aux_loss_coef * aux_loss + self.router_z_loss_coef * router_z_loss
+        loss = self.router_aux_loss_coef * aux_loss #+ self.router_z_loss_coef * router_z_loss
         
         logits = self.head(self.ln_f(hidden_states))
         return MoeCausalLMOutputWithPast(
@@ -457,8 +458,8 @@ class Text2Motion_Cross_Transformer_MoE(nn.Module):
             fc_rate=4,
             num_experts=8, 
             top_k=2,
-            router_aux_loss_coef = 0.01,
-            router_z_loss_coef = 0.001):
+            router_aux_loss_coef = 0.001,
+            router_z_loss_coef = 0.01):
         super().__init__()
         
         self.top_k = top_k
@@ -475,7 +476,6 @@ class Text2Motion_Cross_Transformer_MoE(nn.Module):
         return self.block_size
 
     def forward(self, idxs, clip_feature):
-        print(52)
         feat = self.model_base(idxs, clip_feature)
         outputs = self.model_head(feat)
         
@@ -526,3 +526,4 @@ class Text2Motion_Cross_Transformer_MoE(nn.Module):
             if k == self.block_size - 1:
                 return xs[:, :-1]
         return xs
+

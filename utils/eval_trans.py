@@ -302,6 +302,8 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
         msg = f"--> --> \t Top1 Improved from {best_top1:.4f} to {R_precision[0]:.4f} !!!"
         logger.info(msg)
         best_top1 = R_precision[0]
+        if save:
+            torch.save({'trans' : trans.state_dict()}, os.path.join(out_dir, 'net_best_top1.pth'))
 
     if R_precision[1] > best_top2 : 
         msg = f"--> --> \t Top2 Improved from {best_top2:.4f} to {R_precision[1]:.4f} !!!"

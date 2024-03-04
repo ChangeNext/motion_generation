@@ -19,11 +19,8 @@ warnings.filterwarnings('ignore')
 ##### ---- Exp dirs ---- #####
 args = option_trans.get_args_parser()
 torch.manual_seed(args.seed)
-
-args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}')
+args.out_dir = os.path.join(args.out_dir, f'{args.exp_name}',f'{os.path.basename(args.resume_trans)[:-4]}')
 os.makedirs(args.out_dir, exist_ok = True)
-
-args.resume_trans = "/data/motion/myvqvae/output_GPT_Final/test/vqmoe_6/net_best_top1_100000.pth"
 
 ##### ---- Logger ---- #####
 logger = utils_model.get_logger(args.out_dir)
@@ -59,7 +56,7 @@ net = vqvae.HumanVQVAE(args, ## use args to define different parameters in diffe
                        args.dilation_growth_rate)
 
 
-trans_encoder = trans.Text2Motion_Transformer_MoE(num_vq=args.nb_code, 
+trans_encoder = trans.Text2Motion_Cross_Transformer_MoE(num_vq=args.nb_code, 
                                 embed_dim=args.embed_dim_gpt, 
                                 clip_dim=args.clip_dim, 
                                 block_size=args.block_size, 
